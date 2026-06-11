@@ -86,18 +86,38 @@ def full_online_text_url_from_grader_url(grader_url: str) -> str | None:
 # Browser action execution
 # ---------------------------------------------------------------------------
 
-async def visible_locator(locator, occurrence: int = 0):
+_FORM_INPUT_ROLES = frozenset({"textbox", "searchbox", "spinbutton"})
+_FORM_CONTROL_TAGS = frozenset({"input", "textarea", "select"})
+# Moodle login pages use these stable ids; avoids matching <label>Username</label>.
+_MOODLE_LOGIN_SELECTORS: dict[str, str] = {
+    "username": "#username",
+    "password": "#password",
+}
+
+
+async def visible_locator(locator, occurrence: int = 0, *, prefer_form_control: bool = False):
     visible_seen = 0
+    form_controls: list = []
     count = await locator.count()
     for index in range(count):
         candidate = locator.nth(index)
         try:
-            if await candidate.is_visible(timeout=1000):
-                if visible_seen == occurrence:
-                    return candidate
-                visible_seen += 1
+            if not await candidate.is_visible(timeout=1000):
+                continue
+            if prefer_form_control:
+                tag = await candidate.evaluate("el => el.tagName.toLowerCase()")
+                if tag in _FORM_CONTROL_TAGS:
+                    form_controls.append(candidate)
+                    continue
+                if tag == "label":
+                    continue
+            if visible_seen == occurrence:
+                return candidate
+            visible_seen += 1
         except Exception:
             pass
+    if prefer_form_control and form_controls:
+        return form_controls[min(occurrence, len(form_controls) - 1)]
     return locator.nth(occurrence)
 
 
@@ -109,9 +129,22 @@ def locator_from_action(page, action: SelectorAction):
     name = str(action.get("name", "")).strip()
     if not role or not name:
         raise RuntimeError(f"Action requires role/name or selector: {action}")
+
+    if role in _FORM_INPUT_ROLES:
+        moodle_selector = _MOODLE_LOGIN_SELECTORS.get(name.lower())
+        if moodle_selector:
+            return page.locator(moodle_selector)
+        # Label-linked control first; avoid get_by_text which matches <label> on Moodle login.
+        return page.get_by_label(name, exact=False).or_(page.get_by_role(role, name=name))
+
     by_role = page.get_by_role(role, name=name)
     by_text = page.get_by_text(name, exact=True)
     return by_role.or_(by_text)
+
+
+def _prefers_form_control(action: SelectorAction) -> bool:
+    role = str(action.get("role", "")).strip().lower()
+    return role in _FORM_INPUT_ROLES
 
 
 async def type_editor(page, text: str) -> None:
@@ -131,13 +164,18 @@ async def execute_action(browser: BrowserController, action: SelectorAction) -> 
     occurrence = int(action.get("occurrence", 0) or 0)
     page = browser.page
 
+    prefer_input = _prefers_form_control(action)
+
     if kind == "click":
-        locator = await visible_locator(locator_from_action(page, action), occurrence)
+        locator = await visible_locator(
+            locator_from_action(page, action), occurrence, prefer_form_control=prefer_input
+        )
         await locator.click(timeout=10000)
     elif kind == "type":
         text = str(action.get("text", ""))
-        locator = await visible_locator(locator_from_action(page, action), occurrence)
-        await locator.click(timeout=10000)
+        locator = await visible_locator(
+            locator_from_action(page, action), occurrence, prefer_form_control=prefer_input
+        )
         await locator.fill(text, timeout=10000)
     elif kind == "type_editor":
         await type_editor(page, str(action.get("text", "")))
