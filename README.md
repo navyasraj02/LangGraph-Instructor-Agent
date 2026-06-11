@@ -14,7 +14,7 @@ LangGraph-based agent that logs into Moodle as an instructor, finds an assignmen
 
 1. Logs into Moodle as an instructor.
 2. Navigates to an assignment submission that needs grading.
-3. Grades the assignment submission .
+3. Grades the assignment submission.
 4. Verifies that the submission is graded.
 
 ## Setup
@@ -28,4 +28,6 @@ playwright install chromium
 
 ## Run
 
+```powershell
 python instructor_agent.py
+```
