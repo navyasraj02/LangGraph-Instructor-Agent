@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+*.log
+extra/
+STUDENT_AGENT_EXPLAINED.md
+.agent.lock
+.auth/
+submissions/

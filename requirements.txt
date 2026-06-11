@@ -1,0 +1,12 @@
+playwright>=1.57.0
+python-dotenv>=1.0.0
+httpx>=0.25.0
+flask>=3.0.0
+openai>=1.0.0
+langgraph>=0.2.0
+typing-extensions>=4.9.0
+langsmith[otel]>=0.1.0
+openinference-instrumentation-autogen>=0.1.0
+openinference-instrumentation-openai>=0.1.0
+autogen-agentchat>=0.4.0
+autogen-ext[openai]>=0.4.0
