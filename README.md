@@ -31,3 +31,5 @@ playwright install chromium
 ```powershell
 python instructor_agent.py
 ```
+
+Demo link: https://drive.google.com/file/d/1KaSuy3MZb9IvFtEavQ4VoXWzi7JnNsOl/view?usp=sharing
